@@ -35,7 +35,7 @@ Strategies:
     There is no need to build a parallel mechanism by yourself.
     The stream listener collects chunks asynchronously and decodes them in a
     separate thread, then pipes it to the receiver. The receiver is boxed by
-    atomic type so hashing and matching can be done in a separate thread than
+    atomic type, so hashing and matching can be done in a separate thread than
     the listener. This design allows more processor resources to be used, and
     speeds up the matching algorithm significantly.
 
