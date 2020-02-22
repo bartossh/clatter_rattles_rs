@@ -13,7 +13,7 @@ const FREQ_BINS: &[usize] = &[32, 40, 80, 120, 180, 320]; // Each value in array
 const FUZZ_FACTOR: usize = 2; // higher the value of this factor, lower the fingerprint entropy, and less bias the algorithm become to the sound noises
 
 pub enum FingerprinterErr {
-    WrongChunksSize(Box<dyn Error>),
+    WrongChunksSize,
     NotCalculated,
 }
 
@@ -54,7 +54,7 @@ impl FingerprintHandle {
             match self.transform_chunk_to_fft_fingerprint(chunk) {
                 Ok(fingerprint) => fingerprints.push(fingerprint), 
                 Err(FingerprinterErr::NotCalculated) => (),
-                Err(FingerprinterErr::WrongChunksSize(e)) => println!("{}", e),
+                Err(FingerprinterErr::WrongChunksSize) => (),
             }
         }
         Ok(fingerprints)
@@ -82,7 +82,7 @@ impl FingerprintHandle {
             }
             return Err(FingerprinterErr::NotCalculated);
         }
-        Err(FingerprinterErr::WrongChunksSize(Box::from(format!("Wrong bites length, is: {}, should be: {}", bites.len() , CHUNK_SIZE))))
+        Err(FingerprinterErr::WrongChunksSize)
     }
 }
 
