@@ -39,12 +39,19 @@ impl FingerprintHandle {
         }
     }
 
-    pub fn transform_file_to_discret(&mut self, filename: &String) -> Result<Vec<usize>, Box<dyn Error>> {
-        let f = File::open(filename)?;
+    /// Calculate discret representation of accustic file
+    /// 
+    /// # Arguments:
+    /// * path - path to accustinc file
+    /// 
+    /// # Returns buffer of discretize accustic files if success or dynamic error otherwise
+    /// 
+    pub fn transform_file_to_discret(&mut self, path: &String) -> Result<Vec<usize>, Box<dyn Error>> {
+        let f = File::open(path)?;
         let mut iter_chunk = ByteSliceIter::new(f, CHUNK_SIZE);
         let mut fingerprints = Vec::new();
         while let Some(chunk) = iter_chunk.next()? {
-            match self.get_fft_fingerprinted(chunk) {
+            match self.transform_chunk_to_fft_fingerprint(chunk) {
                 Ok(fingerprint) => fingerprints.push(fingerprint), 
                 Err(FingerprinterErr::NotCalculated) => (),
                 Err(FingerprinterErr::WrongChunksSize(e)) => println!("{}", e),
@@ -53,7 +60,14 @@ impl FingerprintHandle {
         Ok(fingerprints)
     }
 
-    pub fn get_fft_fingerprinted(&mut self, bites: &[u8]) -> Result<usize, FingerprinterErr> {
+    /// Transforms buffer chunk to district fingerprint
+    /// 
+    /// #Arguments:
+    /// * bites - chunk of size 1024 bites to be transformed
+    /// 
+    /// # Returns single fingerprint if success or error FingerprinterErr otherwie
+    /// 
+    pub fn transform_chunk_to_fft_fingerprint(&mut self, bites: &[u8]) -> Result<usize, FingerprinterErr> {
         if bites.len() == CHUNK_SIZE {
             for sample in bites.chunks_exact(CHANNELS) {
                 self.input.push(Complex::from(f32::from(
