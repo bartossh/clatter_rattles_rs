@@ -1,14 +1,21 @@
-use rayon::prelude::*;
 use rustfft::algorithm::Radix4;
 use rustfft::num_complex::Complex;
 use rustfft::num_traits::Zero;
 use rustfft::FFT;
 use std::error::Error;
-use std::sync::{Arc, Mutex};
+use std::fs::File;
+use read_byte_slice::{ByteSliceIter, FallibleStreamingIterator};
 
-const FFT_WINDOW_SIZE: usize = 1024; // chunk window size to process by fast forward fourier function
+const CHUNK_SIZE: usize = 1024; // chunk size from readable buffer (file or stream)
+const CHANNELS: usize = 2; // number of channels to compose floting point number from 
+
 const FREQ_BINS: &[usize] = &[32, 40, 80, 120, 180, 320]; // Each value in array is a top range frequency to calculate local maximum magnitude for
 const FUZZ_FACTOR: usize = 2; // higher the value of this factor, lower the fingerprint entropy, and less bias the algorithm become to the sound noises
+
+pub enum FingerprinterErr {
+    WrongChunksSize(Box<dyn Error>),
+    NotCalculated,
+}
 
 /// Helper struct for calculating acoustic fingerprint
 ///
@@ -16,53 +23,58 @@ const FUZZ_FACTOR: usize = 2; // higher the value of this factor, lower the fing
 pub struct FingerprintHandle {
     /// FFT algorithm
     fft: Radix4<f32>,
+    fft_window_size: usize,
+    input: Vec<Complex<f32>>
 }
 
 #[allow(dead_code)]
 impl FingerprintHandle {
     pub fn new() -> FingerprintHandle {
+        let fft_window_size = CHUNK_SIZE * 2;
+        let input = Vec::new();
         FingerprintHandle {
-            fft: Radix4::new(FFT_WINDOW_SIZE, false),
+            fft: Radix4::new(fft_window_size, false),
+            fft_window_size,
+            input
         }
     }
 
-    /// Calculate fingerprint for decoded stream
-    ///
-    /// This method uses fast forward fourier computation
-    /// to process decoded stream input in to
-    /// stream of complex number output,
-    /// then calculates fingerprint
-    ///
-    /// # Arguments:
-    /// * decoded_stream - acoustic stream that is decoded to stream of floats
-    ///
-    /// # Returns success of fingerprint collection, dynamic error otherwise
-    ///
-    pub fn calc_fingerprint_collection(
-        &self,
-        decoded_stream: &[f32],
-    ) -> Result<Vec<usize>, Box<dyn Error>> {
-        let fingerprints_arr: Arc<Mutex<Vec<usize>>> = Arc::new(Mutex::new(Vec::new()));
-        decoded_stream
-            .par_chunks(FFT_WINDOW_SIZE) // multi threaded iteration over chunks, where chunk of size FFT_WINDOW_SIZE
-            .for_each(|chunk| {
-                if chunk.len() >= FFT_WINDOW_SIZE {
-                    let mut input: Vec<Complex<f32>> = chunk.iter().map(Complex::from).collect();
-                    let mut output: Vec<Complex<f32>> = vec![Complex::zero(); FFT_WINDOW_SIZE];
-                    self.fft.process(&mut input, &mut output);
-                    fingerprints_arr
-                        .lock()
-                        .unwrap()
-                        .push(calculate_fingerprint(&output));
-                }
-            });
-        let arr = fingerprints_arr.lock().unwrap().clone();
-        Ok(arr)
+    pub fn transform_file_to_discret(&mut self, filename: &String) -> Result<Vec<usize>, Box<dyn Error>> {
+        let f = File::open(filename)?;
+        let mut iter_chunk = ByteSliceIter::new(f, CHUNK_SIZE);
+        let mut fingerprints = Vec::new();
+        while let Some(chunk) = iter_chunk.next()? {
+            match self.get_fft_fingerprinted(chunk) {
+                Ok(fingerprint) => fingerprints.push(fingerprint), 
+                Err(FingerprinterErr::NotCalculated) => (),
+                Err(FingerprinterErr::WrongChunksSize(e)) => println!("{}", e),
+            }
+        }
+        Ok(fingerprints)
+    }
+
+    pub fn get_fft_fingerprinted(&mut self, bites: &[u8]) -> Result<usize, FingerprinterErr> {
+        if bites.len() == CHUNK_SIZE {
+            for sample in bites.chunks_exact(CHANNELS) {
+                self.input.push(Complex::from(f32::from(
+                    sample.iter().fold(0, |sum, x| sum + *x / CHANNELS as u8)),
+                ));
+            }
+            if self.input.len() == self.fft_window_size {
+                let mut output: Vec<Complex<f32>> = vec![Complex::zero(); self.fft_window_size];
+                self.fft.process(&mut self.input, &mut output);
+                self.input.clear();
+                return Ok(calculate_fingerprint(&output));
+            }
+            return Err(FingerprinterErr::NotCalculated);
+        }
+        Err(FingerprinterErr::WrongChunksSize(Box::from(format!("Wrong bites length, is: {}, should be: {}", bites.len() , CHUNK_SIZE))))
     }
 }
 
 /// Find points with max magnitude in each of the bins
 /// 
+#[allow(dead_code)]
 fn calculate_fingerprint(arr: &[Complex<f32>]) -> usize {
     let mut high_scores: Vec<f32> = vec![0.0; FREQ_BINS.len()];
     let mut record_points: Vec<usize> = vec![0; FREQ_BINS.len()];
@@ -108,7 +120,7 @@ mod tests {
     #[test]
     fn test_calculate_fingerprint() {
         let mut rng = rand::thread_rng();
-        let mut arr_f32: Vec<f32> = vec![0.0; super::FFT_WINDOW_SIZE];
+        let mut arr_f32: Vec<f32> = vec![0.0; super::CHUNK_SIZE * 2];
         arr_f32.iter_mut().for_each(|complex_num| {
             *complex_num = rng.gen::<f32>() * 10000_f32;
         });
@@ -119,5 +131,18 @@ mod tests {
             fingerprint_log10 > 12_f64 && fingerprint_log10 < 13_f64,
             true
         );
+    }
+
+    #[test]
+    fn test_transform_file_to_discret() {
+        use std::time::Instant;
+        let now = Instant::now();
+        let mut fingerprinter = super::FingerprintHandle::new();
+        let fingerprints = fingerprinter.transform_file_to_discret(&format!("assets/space_cover.mp3")).unwrap();
+        println!("Transfroming to discret first file took: {} ms", now.elapsed().as_millis());
+        println!("Total number of fingerprints of first file is: {}", fingerprints.len());
+        let fingerprints = fingerprinter.transform_file_to_discret(&format!("assets/The 8 second music video.mp3")).unwrap();
+        println!("Transfroming to discret second file took: {} ms", now.elapsed().as_millis());
+        println!("Total number of fingerprints of second file is: {}", fingerprints.len());
     }
 }
