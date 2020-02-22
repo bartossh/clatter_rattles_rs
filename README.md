@@ -23,7 +23,7 @@ Strategies:
 
 - Use a fingerprint hashing mechanism based on
   [Fast Fourier Transform](https://en.wikipedia.org/wiki/Fast_Fourier_transform)
-  and [Accustic Fingerprint Hash](https://en.wikipedia.org/wiki/Acoustic_fingerprint).
+  and [Acoustic Fingerprint Hash](https://en.wikipedia.org/wiki/Acoustic_fingerprint).
 - Focus on parallel stream chunk fingerprint hashing method.
 - Try to offer a simple way to match a given sample against songs in database
   collection.

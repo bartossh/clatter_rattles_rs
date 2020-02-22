@@ -7,7 +7,7 @@ use std::fs::File;
 use read_byte_slice::{ByteSliceIter, FallibleStreamingIterator};
 
 const CHUNK_SIZE: usize = 1024; // chunk size from readable buffer (file or stream)
-const CHANNELS: usize = 2; // number of channels to compose floting point number from 
+const CHANNELS: usize = 2; // number of channels to compose floating point number from 
 
 const FREQ_BINS: &[usize] = &[32, 40, 80, 120, 180, 320]; // Each value in array is a top range frequency to calculate local maximum magnitude for
 const FUZZ_FACTOR: usize = 2; // higher the value of this factor, lower the fingerprint entropy, and less bias the algorithm become to the sound noises
@@ -39,14 +39,14 @@ impl FingerprintHandle {
         }
     }
 
-    /// Calculate discret representation of accustic file
+    /// Calculate discrete representation of acoustic file
     /// 
     /// # Arguments:
-    /// * path - path to accustinc file
+    /// * path - path to acoustic file
     /// 
-    /// # Returns buffer of discretized accustic file if success or dynamic error otherwise
+    /// # Returns buffer of discretion of acoustic file if success or dynamic error otherwise
     /// 
-    pub fn transform_file_to_discret(&mut self, path: &String) -> Result<Vec<usize>, Box<dyn Error>> {
+    pub fn transform_file_to_discrete(&mut self, path: &String) -> Result<Vec<usize>, Box<dyn Error>> {
         let f = File::open(path)?;
         let mut iter_chunk = ByteSliceIter::new(f, CHUNK_SIZE);
         let mut fingerprints = Vec::new();
@@ -65,7 +65,7 @@ impl FingerprintHandle {
     /// # Arguments:
     /// * bites - chunk of size 1024 bites to be transformed
     /// 
-    /// # Returns single fingerprint if success or error FingerprinterErr otherwie
+    /// # Returns single fingerprint if success or error FingerprinterErr otherwise
     /// 
     pub fn transform_chunk_to_fft_fingerprint(&mut self, bites: &[u8]) -> Result<usize, FingerprinterErr> {
         if bites.len() == CHUNK_SIZE {
@@ -110,7 +110,7 @@ fn calculate_fingerprint(arr: &[Complex<f32>]) -> usize {
     encode(&record_points)
 }
 
-/// Encodeing function with reverse order
+/// Encoding function with reverse order
 /// 
 fn encode(arr: &[usize]) -> usize {
     (arr[4] - (arr[4] % FUZZ_FACTOR)) * usize::pow(10, 10)
@@ -148,16 +148,18 @@ mod tests {
     }
 
     #[test]
-    fn test_transform_file_to_discret() {
+    #[ignore]
+    fn test_transform_file_to_discrete() {
+        // to those that want to test, use your own mp3 files, I don't want to pollute github with unnecessary files
         println!("This is performance test");
         use std::time::Instant;
         let now = Instant::now();
         let mut fingerprinter = super::FingerprintHandle::new();
-        let fingerprints = fingerprinter.transform_file_to_discret(&format!("assets/space_cover.mp3")).unwrap();
-        println!("Transfroming to discret first file took: {} ms", now.elapsed().as_millis());
+        let fingerprints = fingerprinter.transform_file_to_discrete(&format!("assets/space_cover.mp3")).unwrap();
+        println!("Transforming to discrete first file took: {} ms", now.elapsed().as_millis());
         println!("Total number of fingerprints of first file is: {}", fingerprints.len());
-        let fingerprints = fingerprinter.transform_file_to_discret(&format!("assets/The 8 second music video.mp3")).unwrap();
-        println!("Transfroming to discret second file took: {} ms", now.elapsed().as_millis());
+        let fingerprints = fingerprinter.transform_file_to_discrete(&format!("assets/The 8 second music video.mp3")).unwrap();
+        println!("Transforming to discrete second file took: {} ms", now.elapsed().as_millis());
         println!("Total number of fingerprints of second file is: {}", fingerprints.len());
         assert_eq!(1, 1);
     }
