@@ -1,5 +1,4 @@
 pub mod redis_actions;
-// pub mod stream_actions;
 use std::collections::HashMap;
 use std::error::Error;
 
@@ -28,12 +27,4 @@ pub trait Repository {
         &mut self,
         fingerprints: &Vec<usize>,
     ) -> Result<HashMap<String, usize>, Box<dyn Error>>;
-}
-
-pub trait PlaylistHelper {
-    /// Finds uri located inside playlist
-    ///
-    /// # Return success of uri string if present or Error otherwise
-    ///
-    fn find_uri(&self) -> Result<String, Box<dyn Error>>;
 }
