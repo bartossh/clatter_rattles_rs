@@ -44,7 +44,7 @@ impl FingerprintHandle {
     /// # Arguments:
     /// * path - path to accustinc file
     /// 
-    /// # Returns buffer of discretize accustic files if success or dynamic error otherwise
+    /// # Returns buffer of discretized accustic file if success or dynamic error otherwise
     /// 
     pub fn transform_file_to_discret(&mut self, path: &String) -> Result<Vec<usize>, Box<dyn Error>> {
         let f = File::open(path)?;
@@ -62,7 +62,7 @@ impl FingerprintHandle {
 
     /// Transforms buffer chunk to district fingerprint
     /// 
-    /// #Arguments:
+    /// # Arguments:
     /// * bites - chunk of size 1024 bites to be transformed
     /// 
     /// # Returns single fingerprint if success or error FingerprinterErr otherwie
@@ -149,6 +149,7 @@ mod tests {
 
     #[test]
     fn test_transform_file_to_discret() {
+        println!("This is performance test");
         use std::time::Instant;
         let now = Instant::now();
         let mut fingerprinter = super::FingerprintHandle::new();
@@ -158,5 +159,6 @@ mod tests {
         let fingerprints = fingerprinter.transform_file_to_discret(&format!("assets/The 8 second music video.mp3")).unwrap();
         println!("Transfroming to discret second file took: {} ms", now.elapsed().as_millis());
         println!("Total number of fingerprints of second file is: {}", fingerprints.len());
+        assert_eq!(1, 1);
     }
 }
