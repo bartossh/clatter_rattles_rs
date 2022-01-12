@@ -2,8 +2,6 @@
 
 ![Build](https://github.com/bartOssh/clatter_rattles_rs/workflows/Rust/badge.svg?branch=master)
 
-<b>This project is not ready for production, and it is still under development.</b>
-
 <p align="center">
     <img
     width="85%" height="85%"
